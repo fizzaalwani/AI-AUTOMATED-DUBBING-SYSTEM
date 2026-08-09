@@ -9,7 +9,7 @@ def get_model():
 
     if model is None:
         model = WhisperModel(
-            "larger-v3",
+            "large-v3",
             device="cpu",
             compute_type="int8"
         )

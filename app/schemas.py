@@ -55,6 +55,8 @@ class TranslationResponse(BaseModel):
     source_language: str
     target_language: str
     translated_text: str
+    translated_segments: list
+    translated_segments: list
     processing_time: float
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)

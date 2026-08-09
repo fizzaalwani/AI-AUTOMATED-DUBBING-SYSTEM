@@ -58,13 +58,14 @@ def process_pipeline(file, db):
         logger.info("Speech recognition completed.") 
 
         logger.info("Translation started.")
-        translation_result = translate(transcript.transcript)
+        translation_result = translate(transcript.transcript, transcript.segments)
         translation = Translation(
             video_id=video.video_id,
             translation_model=translation_result["model"],
             source_language=translation_result["source_language"],
             target_language=translation_result["target_language"],
             translated_text=translation_result["translated_text"],
+            translated_segments=translation_result["translated_segments"],
             processing_time=translation_result["processing_time"]
         )
 
@@ -95,7 +96,7 @@ def process_pipeline(file, db):
         logger.info("Voice synthesis completed.")
 
         logger.info("Video dubbing started.")
-        dubbed_result = dub_video(video_path, voice.generated_audio_path, OUTPUT_DIR)
+        dubbed_result = dub_video(video_path,  voice.generated_audio_path, OUTPUT_DIR)
         voice.dubbed_video_path = str(dubbed_result["dubbed_video"])
         voice.video_processing_time = dubbed_result["processing_time"]
         video.status = "Completed"

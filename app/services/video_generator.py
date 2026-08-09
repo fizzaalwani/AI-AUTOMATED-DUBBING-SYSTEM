@@ -10,26 +10,19 @@ def dub_video(video_path, dubbed_audio_path, output_dir):
 
     command = [
         "ffmpeg",
-        "-i",
-        str(video_path),
-        "-i",
-        str(dubbed_audio_path),
-        "-map",
-        "0:v:0",
-        "-map",
-        "1:a:0",
-        "-c:v",
-        "copy",
-        "-c:a",
-        "aac",
-        "-shortest",
+        "-i", str(video_path),
+        "-i", str(dubbed_audio_path),
+        "-map", "0:v:0",
+        "-map", "1:a:0",
+        "-c:v", "copy",
+        "-c:a", "aac",
         "-y",
         str(output_video)
     ]
 
     try:
         logger.info("Merging generated audio with original video using FFmpeg.")
-        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(command, check=True)
         processing_time = round(time.time() - start_time, 2)
         logger.info(f"Dubbed video generated successfully: {output_video} ({processing_time}s)")
 

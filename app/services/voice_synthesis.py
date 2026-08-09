@@ -1,3 +1,4 @@
+from pathlib import Path
 import subprocess
 import shutil
 import time
@@ -5,11 +6,14 @@ from app.utils.logger import logger
 
 MODEL_NAME = "F5TTS_v1_Base"
 
-def generate_speech( video_id, reference_audio, reference_text, generation_text, output_dir):
+def generate_speech( video_id, reference_audio, reference_text, generation_text,output_dir):
+    
     logger.info(f"Starting voice generation for video_id={video_id}")
 
     start_time = time.time()
     cli_path = shutil.which("f5-tts_infer-cli")
+    output_dir = Path(output_dir)
+
     generated_audio = output_dir / f"{video_id}_generated.wav"
 
     command = [
@@ -36,9 +40,10 @@ def generate_speech( video_id, reference_audio, reference_text, generation_text,
     except subprocess.CalledProcessError as e:
         logger.error(f"Voice generation failed: {e}")
         raise RuntimeError(f"Voice generation failed: {e}")
-    
+
     return {
         "generated_audio": str(generated_audio),
         "tts_model": MODEL_NAME,
         "processing_time": processing_time
     }
+

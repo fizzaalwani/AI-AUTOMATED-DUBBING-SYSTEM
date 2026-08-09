@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Float, String, Text, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import JSON
 from sqlalchemy.orm import relationship
@@ -29,7 +29,7 @@ class Transcript(Base):
     language = Column(String(20))
     transcript = Column(Text, nullable=False)
     segments = Column(JSON, nullable=True)
-    processing_time = Column(String(50))
+    processing_time = Column(Float)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     video = relationship("Video", back_populates="transcript")
@@ -43,13 +43,14 @@ class Translation(Base):
     source_language = Column(String(20))
     target_language = Column(String(20))
     translated_text = Column(Text)
-    processing_time = Column(String(50))
+    translated_segments = Column(JSON, nullable=True)
+    processing_time = Column(Float)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     video = relationship("Video", back_populates="translation")
 
 class VoiceSynthesis(Base):
-    __tablename__ = "voice_Synthesis"
+    __tablename__ = "voice_synthesis"
 
     voice_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     video_id = Column(UUID(as_uuid=True), ForeignKey("videos.video_id", ondelete="CASCADE"), nullable=False)
@@ -59,7 +60,7 @@ class VoiceSynthesis(Base):
     reference_audio_path = Column(String(500))
     generated_audio_path = Column(String(500))
     dubbed_video_path = Column(String(500))
-    processing_time = Column(String(50))
+    processing_time = Column(Float)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     video = relationship("Video", back_populates="voice_synthesis")

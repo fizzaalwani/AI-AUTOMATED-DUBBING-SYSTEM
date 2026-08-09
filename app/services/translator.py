@@ -19,7 +19,7 @@ def load_model():
         model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME)
         logger.info("NLLB model loaded successfully.")
 
-def translate(text):
+def translate(text, segments=None):
     load_model()
     logger.info("Translation started using NLLB model.")
 
@@ -33,6 +33,25 @@ def translate(text):
                 max_length=512, num_beams=5)
 
         translated_text = tokenizer.batch_decode( translated_tokens, skip_special_tokens=True)[0]
+
+        translated_segments = []
+        if segments:
+            for segment in segments:
+                inputs = tokenizer(segment["text"], return_tensors="pt")
+                with torch.inference_mode():
+                    translated_tokens = model.generate(
+                        **inputs,
+                        forced_bos_token_id=tokenizer.convert_tokens_to_ids("eng_Latn"),
+                        max_length=256,
+                        num_beams=5
+                    )
+
+                translated_segment = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
+                translated_segments.append({
+                    "start": segment["start"],
+                    "end": segment["end"],
+                    "text": translated_segment
+                })
         processing_time = round( time.time() - start_time, 2)
         logger.info(f"Translation completed successfully ({processing_time}s)")
 
@@ -42,6 +61,7 @@ def translate(text):
 
     return {
         "translated_text": translated_text,
+        "translated_segments": translated_segments,
         "source_language": "Urdu",
         "target_language": "English",
         "model": MODEL_NAME,

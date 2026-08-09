@@ -99,7 +99,7 @@ proto-plus==1.28.3
 protobuf==7.35.1
 psutil==7.2.2
 psycopg2-binary==2.9.12
-pyarrow==24.0.0
+pyarrow==21.0.0
 pyasn1==0.6.4
 pyasn1_modules==0.4.2
 pycparser==3.0
@@ -129,6 +129,7 @@ scipy==1.17.1
 semantic-version==2.10.0
 sentencepiece==0.2.2
 sentry-sdk==2.66.1
+setuptools==83.0.0
 shellingham==1.5.4
 six==1.17.0
 soundfile==0.14.0
@@ -143,12 +144,11 @@ tokenizers==0.22.2
 toml==0.10.2
 tomli==2.4.1
 tomlkit==0.14.0
-torch==2.13.0
+torch==2.8.0+cpu
 torch-einops-utils==0.1.12
-torchaudio==2.11.0
+torchaudio==2.8.0+cpu
 torchcodec==0.15.0
 torchdiffeq==0.2.5
-torchvision==0.28.0
 tqdm==4.70.0
 transformers==5.14.1
 transformers-stream-generator==0.0.5
