@@ -144,9 +144,11 @@ tokenizers==0.22.2
 toml==0.10.2
 tomli==2.4.1
 tomlkit==0.14.0
-torch==2.8.0+cpu
+# torch==2.8.0+cpu
+torch==2.8.0
 torch-einops-utils==0.1.12
-torchaudio==2.8.0+cpu
+# torchaudio==2.8.0+cpu
+torchaudio==2.8.0
 torchcodec==0.15.0
 torchdiffeq==0.2.5
 tqdm==4.70.0

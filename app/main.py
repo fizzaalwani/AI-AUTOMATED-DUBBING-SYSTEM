@@ -43,3 +43,12 @@ logger.info("All API routers registered successfully.")
 def root():
     logger.info("Root endpoint accessed.")
     return {"message": "Automated Video Dubbing Backend Running"}
+
+
+#streamlit run app/frontend.py
+#uvicorn app.main:app --reload
+
+
+# cd C:\Users\fizza\Downloads\postgresql-18.4-2\pgsql
+
+# bin\pg_ctl.exe start -D "C:\Users\fizza\Downloads\postgresql-18.4-2\pgsql\data"

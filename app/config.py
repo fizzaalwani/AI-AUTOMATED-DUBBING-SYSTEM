@@ -4,9 +4,9 @@ import os
 
 load_dotenv()
 
-os.environ["HF_HOME"] = os.getenv("HF_HOME")
-os.environ["TRANSFORMERS_CACHE"] = os.getenv("TRANSFORMERS_CACHE")
-os.environ["TORCH_HOME"] = os.getenv("TORCH_HOME")
+# os.environ["HF_HOME"] = os.getenv("HF_HOME")
+# os.environ["TRANSFORMERS_CACHE"] = os.getenv("TRANSFORMERS_CACHE")
+# os.environ["TORCH_HOME"] = os.getenv("TORCH_HOME")
 
 #project root directory
 BASE_DIR = Path(__file__).resolve().parent.parent
