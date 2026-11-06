@@ -47,6 +47,7 @@ def root():
 
 #streamlit run app/frontend.py
 #uvicorn app.main:app --reload
+#uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 
 # cd C:\Users\fizza\Downloads\postgresql-18.4-2\pgsql

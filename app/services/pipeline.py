@@ -6,6 +6,7 @@ from app.database.tables import Translation
 from app.database.tables import VoiceSynthesis
 
 from app.services.audio_extractor import extract_audio
+from app.services.background_separator import separate_vocals
 from app.services.speech_to_text import transcribe
 from app.services.translator import translate
 from app.services.voice_synthesis import generate_speech
@@ -14,6 +15,7 @@ from app.services.video_generator import (
     dub_video,
     combine_audio_segments,
     get_audio_duration,
+    mix_with_background,
 )
 
 from app.config import UPLOAD_DIR
@@ -48,8 +50,15 @@ def process_pipeline(file, db):
         video.audio_path = str(audio_result["audio_path"])
         db.commit()
 
+        video_duration = get_audio_duration(video_path)
+
+        logger.info("Vocal / background separation started.")
+        separation = separate_vocals(video_path, video.video_id, OUTPUT_DIR)
+
         logger.info("Speech recognition started.")
-        transcript_result = transcribe(audio_result["audio_path"])
+        transcript_result = transcribe(
+            separation["vocals_16k"], video_duration=video_duration
+        )
         transcript = Transcript(
             video_id=video.video_id,
             whisper_model=transcript_result["model"],
@@ -82,7 +91,7 @@ def process_pipeline(file, db):
         logger.info("Voice synthesis started.")
         voice_result = generate_speech(
             video_id=video.video_id,
-            reference_audio=video.audio_path,
+            reference_audio=separation["vocals_16k"],
             reference_text=transcript.transcript,
             reference_segments=transcript.segments,
             translated_segments=translation_result["translated_segments"],
@@ -91,19 +100,27 @@ def process_pipeline(file, db):
 
         timed_audio_path = OUTPUT_DIR / f"{video.video_id}_timed_dubbed.wav"
 
-        # Timeline must match the video length so audio isn't cut short.
-        video_duration = get_audio_duration(video_path)
-
         combine_audio_segments(
             generated_segments=voice_result["generated_segments"],
             output_audio=timed_audio_path,
             total_duration=video_duration,
         )
+
+        # Keep the music: mix the dub over the background track.
+        final_audio_path = OUTPUT_DIR / f"{video.video_id}_final_mix.wav"
+        use_clean_bg = separation["background"] is not None
+        mix_with_background(
+            dub_audio=timed_audio_path,
+            background_audio=separation["background"] or separation["full_audio"],
+            output_audio=final_audio_path,
+            ducked=not use_clean_bg,
+        )
+
         voice = VoiceSynthesis(
             video_id=video.video_id,
             tts_model=voice_result["tts_model"],
             reference_audio_path=video.audio_path,
-            generated_audio_path=str(timed_audio_path),
+            generated_audio_path=str(final_audio_path),
             processing_time=voice_result["processing_time"],
         )
         db.add(voice)
@@ -112,7 +129,7 @@ def process_pipeline(file, db):
         logger.info("Voice synthesis completed.")
 
         logger.info("Video dubbing started.")
-        dubbed_result = dub_video(video_path, timed_audio_path, OUTPUT_DIR)
+        dubbed_result = dub_video(video_path, final_audio_path, OUTPUT_DIR)
         voice.dubbed_video_path = str(dubbed_result["dubbed_video"])
         voice.video_processing_time = dubbed_result["processing_time"]
         video.status = "Completed"

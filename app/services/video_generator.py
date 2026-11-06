@@ -101,7 +101,10 @@ def combine_audio_segments(generated_segments, output_audio, total_duration=None
         raise RuntimeError("No valid audio segments were available.")
 
     timeline_end = max(s["end"] for s in segments)
-    total_duration = max(float(total_duration or 0), timeline_end)
+    # Keep the audio exactly as long as the video (a segment ending past
+    # the video would otherwise make the audio longer than the picture).
+    total_duration = float(total_duration) if total_duration else timeline_end
+    segments = [s for s in segments if s["start"] < total_duration]
 
     temp_dir = output_audio.parent / f"{output_audio.stem}_temp"
     temp_dir.mkdir(parents=True, exist_ok=True)
@@ -138,6 +141,41 @@ def combine_audio_segments(generated_segments, output_audio, total_duration=None
     finally:
         import shutil
         shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def mix_with_background(dub_audio, background_audio, output_audio, ducked=False):
+    """
+    Mix the dub over the background (music / ambience).
+
+    The background is lowered automatically whenever the dub is speaking
+    (sidechain ducking) and returns to full volume between lines.
+
+    ducked=True is used when no clean background exists (the full original
+    audio, Urdu speech included, is used instead), so it is lowered much
+    harder.
+    """
+    ratio, threshold, floor = (20, 0.01, 0.25) if ducked else (6, 0.02, 0.8)
+    bg_gain = 0.35 if ducked else 0.9
+
+    filter_graph = (
+        f"[1:a]aresample=24000,aformat=channel_layouts=mono,"
+        f"volume={bg_gain}[bg];"
+        f"[0:a]aresample=24000,asplit=2[dub][key];"
+        f"[bg][key]sidechaincompress=threshold={threshold}:ratio={ratio}:"
+        f"attack=20:release=400:makeup=1[ducked];"
+        f"[dub][ducked]amix=inputs=2:duration=first:normalize=0,"
+        f"alimiter=limit=0.95[out]"
+    )
+
+    subprocess.run(
+        ["ffmpeg", "-v", "error",
+         "-i", str(dub_audio), "-i", str(background_audio),
+         "-filter_complex", filter_graph, "-map", "[out]",
+         "-c:a", "pcm_s16le", "-y", str(output_audio)],
+        check=True,
+    )
+    logger.info(f"Dub mixed with background: {output_audio}")
+    return output_audio
 
 
 def dub_video(video_path, dubbed_audio_path, output_dir):
