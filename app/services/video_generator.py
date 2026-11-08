@@ -8,8 +8,9 @@ import soundfile as sf
 from app.utils.logger import logger
 
 SAMPLE_RATE = 24000          # F5-TTS output rate
-MAX_COMFORT_SPEEDUP = 1.35   # beyond this speech starts to sound rushed
-HARD_MAX_SPEEDUP = 2.0       # absolute limit (single atempo filter)
+MAX_COMFORT_SPEEDUP = 1.15   # beyond this speech starts to sound rushed
+MIN_SLOWDOWN = 1.0           # slow a short line down this much to fill its slot
+HARD_MAX_SPEEDUP = 1.5       # absolute limit; past this we trim instead
 
 
 def get_audio_duration(path):
@@ -22,6 +23,20 @@ def get_audio_duration(path):
     ]
     result = subprocess.run(command, check=True, capture_output=True, text=True)
     return float(result.stdout.strip())
+
+
+TARGET_RMS = 0.08   # about -22 dBFS; every line is brought to this level
+
+
+def normalize_level(data):
+    """Give every line the same loudness (F5-TTS output level varies per
+    line, which sounds like the voice getting heavier / lighter)."""
+    active = data[np.abs(data) > 0.01]
+    if len(active) < 100:
+        return data
+    rms = float(np.sqrt((active ** 2).mean()))
+    gain = min(TARGET_RMS / rms, 4.0)
+    return np.clip(data * gain, -1.0, 1.0).astype(np.float32)
 
 
 def fit_segment_to_slot(input_audio, output_audio, target_duration, available_duration):
@@ -40,11 +55,14 @@ def fit_segment_to_slot(input_audio, output_audio, target_duration, available_du
     speed = 1.0
     if current > target_duration:
         speed = min(current / target_duration, MAX_COMFORT_SPEEDUP)
+    elif current < target_duration * 0.92:
+        # Line is shorter than the speaker's: stretch it a little so it
+        # ends when the speaker stops (limited so it never sounds slow).
+        speed = max(current / target_duration, MIN_SLOWDOWN)
 
     if current / speed > available_duration:
         speed = min(current / available_duration, HARD_MAX_SPEEDUP)
 
-    speed = max(speed, 1.0)
 
     logger.info(
         f"Fit segment: tts={current:.2f}s slot={target_duration:.2f}s "
@@ -112,6 +130,7 @@ def combine_audio_segments(generated_segments, output_audio, total_duration=None
     timeline = np.zeros(int(total_duration * SAMPLE_RATE) + SAMPLE_RATE, dtype=np.float32)
 
     try:
+        placed_end = 0.0
         for i, seg in enumerate(segments):
             target = seg["end"] - seg["start"]
 
@@ -119,7 +138,18 @@ def combine_audio_segments(generated_segments, output_audio, total_duration=None
                 available = segments[i + 1]["start"] - seg["start"]
             else:
                 available = total_duration - seg["start"]
-            available = max(available, target)
+            # leave a short breath before the next line starts
+            available = max(available - 0.12, target)
+
+            # If the line is long, start it slightly early (into the
+            # pause before it) instead of speeding it up more.
+            lead = 0.0
+            tts_len = get_audio_duration(seg["audio_path"])
+            if tts_len > target * MAX_COMFORT_SPEEDUP:
+                free = seg["start"] - placed_end - 0.1
+                lead = max(0.0, min(0.4, free))
+                available += lead
+                target += lead
 
             fitted = temp_dir / f"fitted_{seg['index']}.wav"
             fit_segment_to_slot(seg["audio_path"], fitted, target, available)
@@ -128,7 +158,9 @@ def combine_audio_segments(generated_segments, output_audio, total_duration=None
             if data.ndim > 1:
                 data = data.mean(axis=1)
 
-            offset = int(round(seg["start"] * sr))
+            data = normalize_level(data)
+            offset = int(round((seg["start"] - lead) * sr))
+            placed_end = (offset + len(data)) / sr
             end = min(offset + len(data), len(timeline))
             timeline[offset:end] += data[: end - offset]
 

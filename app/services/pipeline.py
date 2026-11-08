@@ -7,8 +7,8 @@ from app.database.tables import VoiceSynthesis
 
 from app.services.audio_extractor import extract_audio
 from app.services.background_separator import separate_vocals
-from app.services.speech_to_text import transcribe
-from app.services.translator import translate
+from app.services.speech_to_text import transcribe, unload_model as unload_whisper
+from app.services.translator import translate, unload_model as unload_nllb
 from app.services.voice_synthesis import generate_speech
 
 from app.services.video_generator import (
@@ -59,6 +59,7 @@ def process_pipeline(file, db):
         transcript_result = transcribe(
             separation["vocals_16k"], video_duration=video_duration
         )
+        unload_whisper()
         transcript = Transcript(
             video_id=video.video_id,
             whisper_model=transcript_result["model"],
@@ -74,6 +75,7 @@ def process_pipeline(file, db):
 
         logger.info("Translation started.")
         translation_result = translate(transcript.transcript, transcript.segments)
+        unload_nllb()
         translation = Translation(
             video_id=video.video_id,
             translation_model=translation_result["model"],
